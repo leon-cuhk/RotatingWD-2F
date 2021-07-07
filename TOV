@@ -1,0 +1,753 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+SUBROUTINE ROTATINGRHO
+USE DEFINITION
+IMPLICIT NONE
+
+! Dummy integers !
+INTEGER :: i, j, k
+
+! Add the density !
+IF(DM_flag == 1) THEN
+	DO i = 1, KDIV
+		DO j = 1, NDIV	
+			rho (i,j) = (rholor1(i,j)*h1(i,j) + rholor2(i,j)*h2(i,j))/gamma_tov_avg(j)**2
+		END DO
+	END DO
+ELSE
+	DO i = 1, KDIV
+		DO j = 1, NDIV	
+			rho (i,j) = rholor2(i,j)*h2(i,j)/gamma_tov_avg(j)**2
+		END DO
+	END DO
+END IF
+
+END SUBROUTINE
+
+! Newtonian Spherical Potentials !
+REAL (DP), DIMENSION(KDIV,NDIV) :: phi_n
+
+! TOV Spherical Potentials !
+REAL (DP), DIMENSION(KDIV,NDIV) :: phi1_tov
+REAL (DP), DIMENSION(KDIV,NDIV) :: phi2_tov
+
+! Relativistic mass density !
+REAL (DP), DIMENSION(KDIV,NDIV) :: rel1
+REAL (DP), DIMENSION(KDIV,NDIV) :: rel2
+
+! Specific enthalpy !
+REAL (DP), DIMENSION(KDIV,NDIV) :: h1
+REAL (DP), DIMENSION(KDIV,NDIV) :: h2
+
+! Internal energy !
+REAL (DP), DIMENSION(KDIV,NDIV) :: eint1
+REAL (DP), DIMENSION(KDIV,NDIV) :: eint2
+
+! Lorentz factor !
+REAL (DP), DIMENSION(KDIV,NDIV) :: lor1
+REAL (DP), DIMENSION(KDIV,NDIV) :: lor2
+
+! Lorentz factor times density !
+REAL (DP), DIMENSION(KDIV,NDIV) :: rholor1
+REAL (DP), DIMENSION(KDIV,NDIV) :: rholor2
+
+! 3 times Lorentz factor times density !
+REAL (DP), DIMENSION(KDIV,NDIV) :: rho3lor1
+REAL (DP), DIMENSION(KDIV,NDIV) :: rho3lor2
+
+! Angular average density !
+REAL (DP), DIMENSION(NDIV) :: rho1_avg
+REAL (DP), DIMENSION(NDIV) :: rho2_avg
+
+! Angular average density !
+REAL (DP), DIMENSION(NDIV) :: eps1_avg
+REAL (DP), DIMENSION(NDIV) :: eps2_avg
+
+! Angular average density !
+REAL (DP), DIMENSION(NDIV) :: p1_avg
+REAL (DP), DIMENSION(NDIV) :: p2_avg
+
+! Angular average density !
+REAL (DP), DIMENSION(NDIV) :: h1_avg
+REAL (DP), DIMENSION(NDIV) :: h2_avg
+
+! Angular average lorentz factor !
+REAL (DP), DIMENSION(NDIV) :: lor1_avg
+REAL (DP), DIMENSION(NDIV) :: lor2_avg
+
+! Angular average lorentz factor times density !
+REAL (DP), DIMENSION(NDIV) :: rholor1_avg
+REAL (DP), DIMENSION(NDIV) :: rholor2_avg
+
+! Angular average lorentz factor to the power 3times density !
+REAL (DP), DIMENSION(NDIV) :: rho3lor1_avg
+REAL (DP), DIMENSION(NDIV) :: rho3lor2_avg
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! TOV Mass !
+REAL (DP), DIMENSION(NDIV) :: mass_tov_avg
+
+! TOV Lorentz factor !
+REAL (DP), DIMENSION(NDIV) :: gamma_tov_avg
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+SUBROUTINE DENSITYGR
+USE DEFINITION
+IMPLICIT NONE
+
+! Integer !
+INTEGER :: i, j, k
+
+IF(dm_flag == 1) THEN
+
+	! Initialize !
+	rel1 = 0.0D0
+
+	! Find DM quantity !
+	!IF(GR_flag == 1) THEN
+	!	DO i = 1, KDIV
+	!		DO j = 1, NDIV
+	!			rel1(i,j) = rho1(i,j) + eps1(i,j)/clighthat**2
+	!		END DO
+	!	END DO
+	!ELSE
+		DO i = 1, KDIV
+			DO j = 1, NDIV
+				rel1(i,j) = rho1(i,j)
+			END DO
+		END DO
+	!END IF
+
+END IF
+
+! Initialize !
+rel2 = 0.0D0
+
+! Find NM quantity !
+!IF(GR_flag == 1) THEN
+!	DO i = 1, KDIV
+!		DO j = 1, NDIV
+!			rel2(i,j) = rho2(i,j) + eps2(i,j)/clighthat**2
+!		END DO
+!	END DO
+!ELSE	
+	DO i = 1, KDIV
+		DO j = 1, NDIV
+			rel2(i,j) = rho2(i,j)
+		END DO
+	END DO
+!END IF
+
+END SUBROUTINE
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+SUBROUTINE FINDSPECIFIC
+USE DEFINITION
+IMPLICIT NONE
+
+! Integer !
+Integer :: i, j, k
+
+! For DM !
+IF(DM_flag == 1) THEN
+	DO i = 1, KDIV
+		DO j = 1, NDIV
+			IF(rho1(i,j) > 0.0D0) THEN
+				eint1(i,j) = eps1(i,j)/rho1(i,j)/clighthat**2
+			ELSE
+				eint1(i,j) = 0.0D0
+			END IF
+		END DO
+	END DO
+	DO i = 1, KDIV
+		DO j = 1, NDIV
+			IF(hhatnew1(i,j) >= hhata1) THEN
+				h1(i,j) = 1.0D0 + (hhatnew1(i,j) - hhata1)/clighthat**2
+			ELSE
+				h1(i,j) = 1.0D0
+			END IF
+		END DO
+	END DO
+END IF
+
+! Find specific internal energy !
+DO i = 1, KDIV
+	DO j = 1, NDIV
+		IF(rho2(i,j) > 0.0D0) THEN
+			eint2(i,j) = eps2(i,j)/rho2(i,j)/clighthat**2
+		ELSE
+			eint2(i,j) = 0.0D0
+		END IF
+	END DO
+END DO
+
+! Find specific enthalpy !
+IF(fermi_flag == 1) THEN
+	DO i = 1, KDIV
+		DO j = 1, NDIV
+			IF(hhatnew2(i,j) >= hhata2) THEN
+				h2(i,j) = 1.0D0 + (hhatnew2(i,j) - hhata2)/clighthat**2
+			ELSE
+				h2(i,j) = 1.0D0
+			END IF
+		END DO
+	END DO
+ELSEIF(hw_flag == 1) THEN
+	DO i = 1, KDIV
+		DO j = 1, NDIV
+			IF(hhatnew2(i,j) >= hhata2) THEN
+				h2(i,j) = 1.0D0 + (hhatnew2(i,j))/clighthat**2
+			ELSE
+				h2(i,j) = 1.0D0
+			END IF
+		END DO
+	END DO
+ELSEIF(table_flag == 1) THEN
+	DO i = 1, KDIV
+		DO j = 1, NDIV
+			IF(hhatnew2(i,j) >= hhata2) THEN
+				h2(i,j) = 1.0D0 + hhatnew2(i,j)/clighthat**2
+			ELSE
+				h2(i,j) = 1.0D0
+			END IF
+		END DO
+	END DO
+END IF
+
+END SUBROUTINE
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+SUBROUTINE ANGULARLORENZT
+USE DEFINITION
+IMPLICIT NONE
+
+! Integer !
+Integer :: i, j, k
+
+! Dummy !
+REAL (DP) :: dummy
+
+! For DM !
+IF(DM_flag == 1) THEN
+	lor1 = 1.0D0
+	DO i = 1, KDIV
+		DO j = 1, NDIV
+			rholor1(i,j) = rho1(i,j)*lor1(i,j)
+			rho3lor1(i,j) = rho1(i,j)*lor1(i,j)**3
+		END DO
+	END DO
+END IF
+
+! For NM !
+DO i = 1, KDIV
+	DO j = 1, NDIV
+		dummy = (1.0D0 - (velp2(i,j)/clighthat)**2)
+		IF(dummy > 0.0D0) THEN
+			lor2(i,j) = 1.0D0/SQRT(dummy)
+		ELSE
+			lor2(i,j) = 1.0D0/SQRT(1.0D0 - compact)
+		END IF
+		rholor2(i,j) = rho2(i,j)*lor2(i,j)
+		rho3lor2(i,j) = rho2(i,j)*lor2(i,j)**3
+	END DO
+END DO
+
+END SUBROUTINE
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+SUBROUTINE FINDTOVMASS
+USE DEFINITION
+IMPLICIT NONE
+
+! Integer !
+Integer :: i, j, k
+
+! Integrand !
+REAL (DP), DIMENSION(NDIV) :: integrand 
+
+! Dummy !
+REAL (DP) :: dummy
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+! Initialize !
+integrand = 0.0D0
+
+! Now calculate the angular average TOV mass !
+IF(DM_flag == 1) THEN
+	DO j = 1, NDIV
+		integrand(j) = 4.0D0*pi*r(j)**2*(rholor1_avg(j)*(1.0D0 + eps1_avg(j)) + rholor2_avg(j)*(1.0D0 + eps2_avg(j)))
+	END DO
+ELSE	
+	DO j = 1, NDIV
+		integrand(j) = 4.0D0*pi*r(j)**2*(rholor2_avg(j)*(1.0D0 + eps2_avg(j)))
+	END DO
+END IF
+
+! Initialize !
+mass_tov_avg = 0.0D0
+
+! Integrate to TOV mass !
+DO j = 2, NDIV
+	DO i = 1, j - 1
+		mass_tov_avg (j) = mass_tov_avg (j) + (1.0D0/2.0D0)*(r(i+1) - r(i))*(integrand(i+1) + integrand(i))
+	END DO
+END DO
+
+! Initialize !
+gamma_tov_avg = 1.0D0
+
+! Get Lorentz factor !
+DO j = 2, NDIV
+	dummy = (1.0D0 - 2.0D0*mass_tov_avg(j)/r(j)/clighthat**2)
+	IF(dummy > 0.0D0) THEN
+		gamma_tov_avg(j) = SQRT(dummy)
+	ELSE
+		gamma_tov_avg(j) = SQRT(1.0D0 - compact)
+	END IF
+END DO
+
+END SUBROUTINE
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+SUBROUTINE TOVMASS_SPHERICAL
+USE DEFINITION
+IMPLICIT NONE
+
+! Integer !
+Integer :: i, j, k
+
+! Integrand !
+REAL (DP), DIMENSION(NDIV) :: integrand 
+
+! Dummy !
+REAL (DP) :: dummy
+
+! Initialize !
+integrand = 0.0D0
+
+! Now calculate the angular average TOV mass !
+IF(DM_flag == 1) THEN
+	DO j = 1, NDIV
+		integrand(j) = 4.0D0*pi*r(j)**2*(rho1_avg(j)*(1.0D0 + eps1_avg(j)) + rho2_avg(j)*(1.0D0 + eps2_avg(j)))
+	END DO
+ELSE	
+	DO j = 1, NDIV
+		integrand(j) = 4.0D0*pi*r(j)**2*(rho2_avg(j)*(1.0D0 + eps2_avg(j)))
+	END DO
+END IF
+
+! Initialize !
+mass_tov_avg = 0.0D0
+
+! Integrate to TOV mass !
+DO j = 2, NDIV
+	DO i = 1, j - 1
+		mass_tov_avg (j) = mass_tov_avg (j) + (1.0D0/2.0D0)*(r(i+1) - r(i))*(integrand(i+1) + integrand(i))
+	END DO
+END DO
+
+! Initialize !
+gamma_tov_avg = 1.0D0
+
+! Get Lorentz factor !
+DO j = 2, NDIV
+	dummy = (1.0D0 - 2.0D0*mass_tov_avg(j)/r(j)/clighthat**2)
+	IF(dummy > 0.0D0) THEN
+		gamma_tov_avg(j) = SQRT(dummy)
+	ELSE
+		gamma_tov_avg(j) = SQRT(1.0D0 - compact)
+	END IF
+END DO
+
+END SUBROUTINE
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+SUBROUTINE POTENTIAL_N
+USE DEFINITION
+IMPLICIT NONE
+
+! Integer !
+Integer :: i, j, k
+
+! Local !
+REAL (DP), DIMENSION(NDIV) :: integrand
+REAL (DP), DIMENSION(NDIV) :: phi_local
+REAL (DP), DIMENSION(NDIV) :: rho_arot
+REAL (DP), DIMENSION(NDIV) :: mass_n
+
+! Initialize !
+rho_arot = 0.0D0
+
+! Find the gravitating mass !
+IF(dm_flag == 1) THEN
+	DO j = 1, NDIV
+		rho_arot(j) = (rho1_avg(j)*h1_avg(j)*lor1_avg(j) + rho2_avg(j)*h2_avg(j)*lor2_avg(j))/gamma_tov_avg(j)**2
+	END DO
+ELSE
+	DO j = 1, NDIV
+		rho_arot(j) = rho2_avg(j)*h2_avg(j)*lor2_avg(j)/gamma_tov_avg(j)**2
+	END DO
+END IF
+
+! Initialize !
+integrand = 0.0D0
+
+! Form the integrand !
+DO j = 1, NDIV
+	integrand(j)  = 4.0D0*pi*r(j)**2*rho_arot(j)
+END DO
+
+! Initialize !
+mass_n = 0.0D0
+
+! Integrate Newtonian mass !
+DO j = 2, NDIV
+	DO i = 1, j - 1
+		mass_n (j) = mass_n (j) + (1.0D0/2.0D0)*(r(i+1) - r(i))*(integrand(i+1) + integrand(i))
+	END DO
+END DO
+
+! Initialize !
+integrand = 0.0D0
+
+! Form the integrand !
+DO j = 1, NDIV
+	integrand (j) = 4.0D0*pi*r(j)*rho_arot(j)
+END DO
+
+! Initialize !
+phi_local = 0.0D0
+
+! Find newtonian potential !
+DO j = 1, NDIV - 1
+	DO i = j, NDIV - 1
+		phi_local(j) = phi_local(j) + (1.0D0/2.0D0)*(r(i+1) - r(i))*(integrand(i+1) + integrand(i))
+	END DO
+	phi_local(j) = -phi_local(j)
+END DO
+
+! Inner contribution !
+DO j = 2, NDIV
+	phi_local(j) = phi_local(j) - mass_n(j)/r(j)
+END DO
+
+! Assign to global potential !
+DO j = 1, NDIV
+	phi_n(:,j) = phi_local(j)
+END DO
+
+END SUBROUTINE
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+SUBROUTINE POTENTIAL_SPHERICAL
+USE DEFINITION
+IMPLICIT NONE
+
+! Integer !
+Integer :: i, j, k
+
+! Local !
+REAL (DP), DIMENSION(NDIV) :: integrand
+REAL (DP), DIMENSION(NDIV) :: phi_local
+REAL (DP), DIMENSION(NDIV) :: rho_arot
+REAL (DP), DIMENSION(NDIV) :: mass_n
+
+! Initialize !
+rho_arot = 0.0D0
+
+! Find the gravitating mass !
+IF(dm_flag == 1) THEN
+	DO j = 1, NDIV
+		rho_arot(j) = rho1_avg(j) + rho2_avg(j)
+	END DO
+ELSE
+	DO j = 1, NDIV
+		rho_arot(j) = rho2_avg(j)
+	END DO
+END IF
+
+! Initialize !
+integrand = 0.0D0
+
+! Form the integrand !
+DO j = 1, NDIV
+	integrand(j)  = 4.0D0*pi*r(j)**2*rho_arot(j)
+END DO
+
+! Initialize !
+mass_n = 0.0D0
+
+! Integrate Newtonian mass !
+DO j = 2, NDIV
+	DO i = 1, j - 1
+		mass_n (j) = mass_n (j) + (1.0D0/2.0D0)*(r(i+1) - r(i))*(integrand(i+1) + integrand(i))
+	END DO
+END DO
+
+! Initialize !
+integrand = 0.0D0
+
+! Form the integrand !
+DO j = 1, NDIV
+	integrand (j) = 4.0D0*pi*r(j)*rho_arot(j)
+END DO
+
+! Initialize !
+phi_local = 0.0D0
+
+! Find newtonian potential !
+DO j = 1, NDIV - 1
+	DO i = j, NDIV - 1
+		phi_local(j) = phi_local(j) + (1.0D0/2.0D0)*(r(i+1) - r(i))*(integrand(i+1) + integrand(i))
+	END DO
+	phi_local(j) = -phi_local(j)
+END DO
+
+! Inner contribution !
+DO j = 2, NDIV
+	phi_local(j) = phi_local(j) - mass_n(j)/r(j)
+END DO
+
+! Assign to global potential !
+DO j = 1, NDIV
+	phi_n(:,j) = phi_local(j)
+END DO
+
+END SUBROUTINE
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+SUBROUTINE POTENTIAL_TOV
+USE DEFINITION
+IMPLICIT NONE
+
+! Integer !
+Integer :: i, j, k
+
+! Local !
+REAL (DP), DIMENSION(NDIV) :: arrays
+REAL (DP), DIMENSION(NDIV) :: integrand1
+REAL (DP), DIMENSION(NDIV) :: integrand2
+REAL (DP), DIMENSION(NDIV) :: phi1_local
+REAL (DP), DIMENSION(NDIV) :: phi2_local
+
+! Dummy !
+REAL (DP) :: dummy
+
+! Initialize !
+phi1_tov = 0.0D0
+phi2_tov = 0.0D0
+
+! Initialize !
+arrays = 0.0D0
+
+! Form the arrays !
+IF(DM_flag == 1) THEN
+	DO j = 2, NDIV
+		arrays (j) = (mass_tov_avg(j)/r(j)**2 + 4.0D0*pi*r(j)*(p1_avg(j) + p2_avg(j))/clighthat**2)/gamma_tov_avg(j)**2
+	END DO
+ELSE 
+	DO j = 2, NDIV
+		arrays (j) = (mass_tov_avg(j)/r(j)**2 + 4.0D0*pi*r(j)*p2_avg(j)/clighthat**2)/gamma_tov_avg(j)**2
+	END DO
+END IF
+
+! Initialize !
+integrand1 = 0.0D0
+
+! Form the integrand for DM !
+IF(DM_flag == 1) THEN
+	DO j = 1, NDIV
+		IF(rholor1_avg(j) == 0.0D0) THEN
+			integrand1(j) = arrays(j)*h1_avg(j)
+		ELSE
+			integrand1(j) = arrays(j)*h1_avg(j)*rho3lor1_avg(j)/rholor1_avg(j)
+		END IF
+	END DO
+END IF
+
+! Initialize !
+integrand2 = 0.0D0
+
+! For NM !
+DO j = 1, NDIV
+	IF(rholor2_avg(j) == 0.0D0) THEN
+		integrand2(j) = arrays(j)*h2_avg(j)
+	ELSE
+		integrand2(j) = arrays(j)*h2_avg(j)*rho3lor2_avg(j)/rholor2_avg(j)
+	END IF
+END DO
+
+! Initialize !
+phi1_local = 0.0D0
+
+! Find the TOV potential for DM !
+IF(DM_flag == 1) THEN
+	DO j = 1, NDIV - 1
+		DO i = j, NDIV - 1
+			phi1_local(j) = phi1_local(j) + (1.0D0/2.0D0)*(r(i+1) - r(i))*(integrand1(i+1) + integrand1(i))
+		END DO
+	END DO
+END IF
+
+! Initialize !
+phi2_local = 0.0D0
+
+! Find newtonian potential !
+DO j = 1, NDIV - 1
+	DO i = j, NDIV - 1
+		phi2_local(j) = phi2_local(j) + (1.0D0/2.0D0)*(r(i+1) - r(i))*(integrand2(i+1) + integrand2(i))
+	END DO
+END DO
+
+! Boundary potential !
+dummy = (1.0D0 - 2.0D0*mass_tov_avg(NDIV)/r(NDIV)/clighthat**2)
+IF(dummy < 0.0D0) THEN
+	dummy = 1.0D0 - compact
+END IF
+dummy = log(dummy)
+
+! Outer contribution for DM !
+IF(DM_flag == 1) THEN
+	DO j = 1, NDIV
+		phi1_local(j) = -phi1_local(j) + 0.5D0*clighthat**2*dummy
+	END DO
+END IF
+
+! For NM !
+DO j = 1, NDIV
+	phi2_local(j) = -phi2_local(j) + 0.5D0*clighthat**2*dummy
+END DO
+
+! Assign to global potential !
+IF(DM_flag == 1) THEN
+	DO j = 1, NDIV
+		phi1_tov(:,j) = phi1_local(j)
+	END DO
+END IF
+
+! For NM !
+DO j = 1, NDIV
+	phi2_tov(:,j) = phi2_local(j)
+END DO
+
+END SUBROUTINE
+
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+SUBROUTINE TOV_SPHERICAL
+USE DEFINITION
+IMPLICIT NONE
+
+! Integer !
+Integer :: i, j, k
+
+! Local !
+REAL (DP), DIMENSION(NDIV) :: arrays
+REAL (DP), DIMENSION(NDIV) :: integrand1
+REAL (DP), DIMENSION(NDIV) :: integrand2
+REAL (DP), DIMENSION(NDIV) :: phi1_local
+REAL (DP), DIMENSION(NDIV) :: phi2_local
+
+! Dummy !
+REAL (DP) :: dummy
+
+! Initialize !
+phi1_tov = 0.0D0
+phi2_tov = 0.0D0
+
+! Initialize !
+arrays = 0.0D0
+
+! Form the arrays !
+IF(DM_flag == 1) THEN
+	DO j = 2, NDIV
+		arrays (j) = (mass_tov_avg(j)/r(j)**2 + 4.0D0*pi*r(j)*(p1_avg(j) + p2_avg(j))/clighthat**2)/gamma_tov_avg(j)**2
+	END DO
+ELSE 
+	DO j = 2, NDIV
+		arrays (j) = (mass_tov_avg(j)/r(j)**2 + 4.0D0*pi*r(j)*p2_avg(j)/clighthat**2)/gamma_tov_avg(j)**2
+	END DO
+END IF
+
+! Initialize !
+integrand1 = 0.0D0
+
+! Form the integrand for DM !
+IF(DM_flag == 1) THEN
+	DO j = 1, NDIV
+		integrand1(j) = arrays(j)*h1_avg(j)
+	END DO
+END IF
+
+! Initialize !
+integrand2 = 0.0D0
+
+! For NM !
+DO j = 1, NDIV
+	integrand2(j) = arrays(j)*h2_avg(j)
+END DO
+
+! Initialize !
+phi1_local = 0.0D0
+
+! Find the TOV potential for DM !
+IF(DM_flag == 1) THEN
+	DO j = 1, NDIV - 1
+		DO i = j, NDIV - 1
+			phi1_local(j) = phi1_local(j) + (1.0D0/2.0D0)*(r(i+1) - r(i))*(integrand1(i+1) + integrand1(i))
+		END DO
+	END DO
+END IF
+
+! Initialize !
+phi2_local = 0.0D0
+
+! For NM !
+DO j = 1, NDIV - 1
+	DO i = j, NDIV - 1
+		phi2_local(j) = phi2_local(j) + (1.0D0/2.0D0)*(r(i+1) - r(i))*(integrand2(i+1) + integrand2(i))
+	END DO
+END DO
+
+! Boundary potential !
+dummy = (1.0D0 - 2.0D0*mass_tov_avg(NDIV)/r(NDIV)/clighthat**2)
+IF(dummy < 0.0D0) THEN
+	dummy = 1.0D0 - compact
+END IF
+dummy = log(dummy)
+
+! Outer contribution for DM !
+IF(DM_flag == 1) THEN
+	DO j = 1, NDIV
+		phi1_local(j) = -phi1_local(j) + 0.5D0*clighthat**2*dummy
+	END DO
+END IF
+
+! For NM !
+DO j = 1, NDIV
+	phi2_local(j) = -phi2_local(j) + 0.5D0*clighthat**2*dummy
+END DO
+
+! Assign to global potential !
+IF(DM_flag == 1) THEN
+	DO j = 1, NDIV
+		phi1_tov(:,j) = phi1_local(j)
+	END DO
+END IF
+
+! For NM !
+DO j = 1, NDIV
+	phi2_tov(:,j) = phi2_local(j)
+END DO
+
+END SUBROUTINE
